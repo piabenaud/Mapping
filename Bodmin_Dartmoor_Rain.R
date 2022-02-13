@@ -104,9 +104,7 @@ raster_tidy_trim_df <- function(the_raster, the_sf){
 
 Bodmin_Rain <- raster_tidy_trim_df(Total_Rain_Rast, Bodmin_sf)
 
-Dartmoor_Rain <- raster_tidy_trim_df(Total_Rain_Rast, Dartmoor_sf) %>% 
-  mutate(Location = "Dartmoor")
-
+Dartmoor_Rain <- raster_tidy_trim_df(Total_Rain_Rast, Dartmoor_sf) 
 
 # Make the fun plots ------------------------------------------------------
 
