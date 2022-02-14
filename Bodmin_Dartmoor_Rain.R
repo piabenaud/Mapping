@@ -11,7 +11,6 @@ library(ncdf4) # dealing with the netcdf data
 library(sf) # for dealing with the shapefiles
 library(terra) # for dealing with the raster data
 library(dplyr) # for any wranglings
-library(tidyr) # for pivot wider
 library(lubridate) # working with dates and time
 library(ggplot2) # plotting things up
 library(ggdist) # for the fun plots!
@@ -111,18 +110,18 @@ Dartmoor_Rain <- raster_tidy_trim_df(Total_Rain_Rast, Dartmoor_sf)
 rain_plot <- function(rain_df){
   rain_df %>%
     ggplot(aes(x = Total_Rainfall, fill = Total_Rainfall, colour = Total_Rainfall)) +
-    theme_classic()+
-    labs(x='Total Rainfall (mm)') +
+    ggdist::stat_slab(adjust =0.5, colour = "black",
+                      size = 0.4, fill = "gray80") +
+    ggdist::geom_dots(side = "bottom") +
     scale_fill_gradientn(colours = met.brewer("Hiroshige"), limits = c(1000, 3200), name = "Total Rainfall (mm)") +
     scale_colour_gradientn(colours = met.brewer("Hiroshige"), limits = c(1000, 3200), guide ="none") +
     scale_x_continuous(limits = c(1000, 3200))+
+    theme_classic()+
     theme(line = element_blank(),
           text = element_blank(),
           title = element_blank(),
-          legend.position = "none")+
-    ggdist::stat_halfeye(adjust = 0.5, .width = 0, point_colour = 'NA', 
-                         slab_colour='black', slab_size=0.4, slab_fill = "gray80") +
-    ggdist::geom_dots(side = "bottom")
+          legend.position = "none")
+
 }
 
 Bod_rain_cloud <- rain_plot(Bodmin_Rain)
