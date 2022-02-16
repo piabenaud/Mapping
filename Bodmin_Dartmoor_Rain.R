@@ -16,6 +16,7 @@ library(ggplot2) # plotting things up
 library(ggdist) # for the fun plots!
 library(MetBrewer) # colour pals
 library(cowplot) # joining plots and legend func
+library(purrr) # mapping funcs through lists
 
 #rm(list = ls()) # when you need a quick clean of the environment - DOES NOT UNLOAD PACKAGES!
 
@@ -24,7 +25,7 @@ library(cowplot) # joining plots and legend func
 
 UK_AONB_sf <- st_read("Data/NE_AreasOfOutstandingNaturalBeautyEngland_SHP_Full/data/Areas_of_Outstanding_Natural_Beauty_England.shp")
 
-Dartmoor_sf <- st_read("Data/NE_NationalParksEngland_SHP/data/National_Parks_England.shp")
+National_Parks_sf <- st_read("Data/NE_NationalParksEngland_SHP_Full/data/National_Parks_England.shp")
 
 Rainfall_2019_nc <- nc_open("Data/CEH_GEAR-monthly/CEH_GEAR_monthly_GB_2019.nc", auto_GMT = TRUE)
 
@@ -64,12 +65,18 @@ Rainfall_2019 <- rain_df(Rainfall_2019_nc)
 Total_Rainfall_2019 <- Rainfall_2019 %>% 
   group_by(Easting, Northing) %>% 
   summarise(Total_Rainfall = sum(Precipitation)) %>% 
-  ungroup()
-  
-# now as a raster
-Total_Rain_Rast <- rast(Total_Rainfall_2019, type="xyz")
+  ungroup() %>% 
+  rast(., type="xyz") # make the raster
+
 
 rm(Rainfall_2019_nc, Rainfall_2019) # tidy
+
+
+# Pull out the dartmoor polygon -------------------------------------------
+
+Dartmoor_sf <- National_Parks_sf %>% 
+  filter(name == "DARTMOOR")
+
 
 # Pull out the bodmin polygon ---------------------------------------------
 
@@ -154,6 +161,46 @@ leg <- legend_fun(Dart_rain_cloud)
 png("Plots/who_does_it_wetter.png", width = 12, height = 12, units = 'cm', res = 280)
 Who_does_it_wetter
 dev.off()
+
+
+# Let's have a quick look at every NP -------------------------------------
+
+NP_Rain_2019 <- National_Parks_sf %>% 
+  split(., f = .[["name"]]) %>% 
+  map(., ~raster_tidy_trim_df(the_raster = Total_Rainfall_2019, the_sf = .)) %>% 
+  bind_rows(., .id = "National_Park")
+  
+
+multi_rain_plot <- function(rain_df){
+  rain_df %>%
+    ggplot(aes(x = Total_Rainfall, y = National_Park, fill = Total_Rainfall, colour = Total_Rainfall)) +
+    ggdist::stat_slab(scale =1.0, colour = "black",
+                      size = 0.4, fill = "gray80") +
+    ggdist::geom_dots(side = "bottom") +
+    scale_fill_gradientn(colours = met.brewer("Hiroshige"), name = "Total Rainfall (mm)") +
+    scale_colour_gradientn(colours = met.brewer("Hiroshige"), guide ="none") +
+    guides(fill = guide_colourbar(ticks = FALSE, title.position = "left", title.vjust = 0.9))+
+    theme_classic()+
+    theme(line = element_blank(),
+          title = element_blank(),
+          axis.text.x = element_blank(),
+          axis.text = element_text(family = "Amatic SC Bold",
+                                   colour = "black",
+                                   size = 14),
+          legend.position = "bottom",
+          legend.margin = margin(t = 0, unit = "cm"),
+          legend.key.width = unit(1.5, "cm"),
+          legend.key.height = unit(0.5, "cm"),
+          legend.title = element_text(family = "Amatic SC Bold", size = 14, vjust = 1),
+          legend.text = element_text(family = "Amatic SC Bold", size = 12))
+  
+}
+
+the_plot <- multi_rain_plot(filter(NP_Rain_2019, National_Park != "LAKE DISTRICT"))
+
+ggsave(file="Figures/NP_Rain_2019.png", plot=the_plot, width=8, height=8)
+
+
 
 
 # Make the raster plots ---------------------------------------------------
